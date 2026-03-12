@@ -8,17 +8,37 @@ const movieDetailsEl = document.getElementById("movie-details");
 const closeBtn       = document.getElementById("close-details");
 const resultCountEl  = document.getElementById("result-count");
 const statusEl       = document.getElementById("status-msg");
+const btnTop10       = document.getElementById("btn-top10");
+const btnLatest      = document.getElementById("btn-latest");
+const top10Col       = document.getElementById("top10-col");
+const latestCol      = document.getElementById("latest-col");
 
 const API_KEY = "trilogy";
 const BASE    = "https://www.omdbapi.com/";
 
 let currentSelectedLi = null;
+let top10Loaded  = false;
+let latestLoaded = false;
 
-// ── TOP 10 ON LOAD ─────────────────────────────────────────────────────────
+// ── HELPERS ────────────────────────────────────────────────────────────────
+
+function showOnlyRank(which) {
+  // which: "top10" | "latest" | "search" | "none"
+  top10Col.style.display  = which === "top10"  ? "" : "none";
+  latestCol.style.display = which === "latest" ? "" : "none";
+
+  btnTop10.classList.toggle("active",  which === "top10");
+  btnLatest.classList.toggle("active", which === "latest");
+}
+
+// ── TOP 10 ─────────────────────────────────────────────────────────────────
 
 const SEED_TERMS = ["space", "alien", "robot", "future", "star", "mars", "cyber", "time machine"];
 
 async function loadTopScifi() {
+  if (top10Loaded) { showOnlyRank("top10"); return; }
+
+  showOnlyRank("top10");
   setStatus("Carregando top filmes Sci-Fi...", false);
   resultsEl.innerHTML = "";
   resultCountEl.textContent = "";
@@ -36,10 +56,7 @@ async function loadTopScifi() {
     for (const data of searchResults) {
       if (data.Search) {
         for (const m of data.Search) {
-          if (!seenIds.has(m.imdbID)) {
-            seenIds.add(m.imdbID);
-            allMovies.push(m);
-          }
+          if (!seenIds.has(m.imdbID)) { seenIds.add(m.imdbID); allMovies.push(m); }
         }
       }
     }
@@ -60,36 +77,39 @@ async function loadTopScifi() {
       .sort((a, b) => parseFloat(b.imdbRating) - parseFloat(a.imdbRating))
       .slice(0, 10);
 
+    setStatus("", false);
+
     if (top10.length === 0) {
-      setStatus("", false);
-      resultsEl.innerHTML = `<li class="empty-state">Digite um termo e pressione Pesquisar.</li>`;
+      resultsEl.innerHTML = `<li class="empty-state">Nenhum resultado encontrado.</li>`;
       return;
     }
 
-    setStatus("", false);
-    resultCountEl.textContent = `· TOP RANK MELHORES AVALIADOS ·`;
+    resultCountEl.textContent = `Top ${top10.length} · melhores avaliados`;
     renderResults(top10);
+    top10Loaded = true;
 
   } catch (err) {
     console.error(err);
-    setStatus("", false);
-    resultsEl.innerHTML = `<li class="empty-state">Digite um termo e pressione Pesquisar.</li>`;
+    setStatus("Erro de conexão.", true);
   }
 }
 
-// ── LATEST 10 SCI-FI ───────────────────────────────────────────────────────
+// ── LATEST 10 ──────────────────────────────────────────────────────────────
 
 const LATEST_SEED_TERMS = ["sci-fi", "space", "alien", "robot", "future"];
 const CURRENT_YEAR = new Date().getFullYear();
 const RECENT_YEARS = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2];
 
 async function loadLatestScifi() {
-  const latestListEl   = document.getElementById("latest-results");
-  const latestCountEl  = document.getElementById("latest-count");
-  if (!latestListEl || !latestCountEl) return;
+  const latestListEl  = document.getElementById("latest-results");
+  const latestCountEl = document.getElementById("latest-count");
 
+  if (latestLoaded) { showOnlyRank("latest"); return; }
+
+  showOnlyRank("latest");
   latestListEl.innerHTML = `<li class="empty-state">Carregando lançamentos...</li>`;
   latestCountEl.textContent = "";
+  setStatus("Carregando lançamentos recentes...", false);
 
   try {
     const queries = [];
@@ -109,10 +129,7 @@ async function loadLatestScifi() {
     for (const data of searchResults) {
       if (data.Search) {
         for (const m of data.Search) {
-          if (!seenIds.has(m.imdbID)) {
-            seenIds.add(m.imdbID);
-            allMovies.push(m);
-          }
+          if (!seenIds.has(m.imdbID)) { seenIds.add(m.imdbID); allMovies.push(m); }
         }
       }
     }
@@ -126,30 +143,31 @@ async function loadLatestScifi() {
     const scifi = details.filter(d =>
       d.Response === "True" &&
       d.Genre?.toLowerCase().includes("sci-fi") &&
-      d.Year && RECENT_YEARS.includes(parseInt(d.Year))
+      d.Year && parseInt(d.Year) >= CURRENT_YEAR - 2 && parseInt(d.Year) <= CURRENT_YEAR
     );
 
     const latest10 = scifi
       .sort((a, b) => {
         const yearDiff = parseInt(b.Year) - parseInt(a.Year);
         if (yearDiff !== 0) return yearDiff;
-        const rA = parseFloat(a.imdbRating) || 0;
-        const rB = parseFloat(b.imdbRating) || 0;
-        return rB - rA;
+        return (parseFloat(b.imdbRating) || 0) - (parseFloat(a.imdbRating) || 0);
       })
       .slice(0, 10);
+
+    setStatus("", false);
 
     if (latest10.length === 0) {
       latestListEl.innerHTML = `<li class="empty-state">Nenhum lançamento recente encontrado.</li>`;
       return;
     }
 
-    latestCountEl.textContent = `· ÚLTIMOS LANÇAMENTOS ·`;
+    latestCountEl.textContent = `Últimos ${latest10.length} · mais recentes`;
     renderLatestResults(latest10);
+    latestLoaded = true;
 
   } catch (err) {
     console.error(err);
-    latestListEl.innerHTML = `<li class="empty-state">Erro ao carregar lançamentos.</li>`;
+    setStatus("Erro de conexão.", true);
   }
 }
 
@@ -159,8 +177,7 @@ function renderLatestResults(movies) {
   latestListEl.innerHTML = "";
   movies.forEach(movie => {
     const li = document.createElement("li");
-    const rating = movie.imdbRating && movie.imdbRating !== "N/A"
-      ? ` · ★ ${movie.imdbRating}` : "";
+    const rating = movie.imdbRating && movie.imdbRating !== "N/A" ? ` · ★ ${movie.imdbRating}` : "";
     li.innerHTML = `
       <div class="movie-title">${movie.Title}</div>
       <div class="movie-meta">${movie.Year} · ${movie.Runtime}${rating}</div>
@@ -182,10 +199,9 @@ async function searchMovies(query) {
   resultsEl.innerHTML = "";
   resultCountEl.textContent = "";
   hideDetails();
-
-  // Hide latest rank during search
-  const latestCol = document.querySelector(".latest-col");
-  if (latestCol) latestCol.style.display = "none";
+  showOnlyRank("search");
+  top10Col.style.display = "";   // search results go into #results inside top10-col
+  top10Col.querySelector("h3").textContent = "";
 
   try {
     const res1 = await fetch(`${BASE}?s=${encodeURIComponent(query)}&type=movie&apikey=${API_KEY}&page=1`);
@@ -231,6 +247,9 @@ async function searchMovies(query) {
     setStatus("", false);
     resultCountEl.textContent = `${scifi.length} filme${scifi.length !== 1 ? "s" : ""}`;
     renderResults(scifi);
+    // restore heading for next top10 open
+    top10Col.querySelector("h3").textContent = "";
+    top10Loaded = false;
 
   } catch (err) {
     console.error(err);
@@ -244,8 +263,7 @@ function renderResults(movies) {
   resultsEl.innerHTML = "";
   movies.forEach(movie => {
     const li = document.createElement("li");
-    const rating = movie.imdbRating && movie.imdbRating !== "N/A"
-      ? ` · ★ ${movie.imdbRating}` : "";
+    const rating = movie.imdbRating && movie.imdbRating !== "N/A" ? ` · ★ ${movie.imdbRating}` : "";
     li.innerHTML = `
       <div class="movie-title">${movie.Title}</div>
       <div class="movie-meta">${movie.Year} · ${movie.Runtime}${rating}</div>
@@ -314,10 +332,8 @@ function doSearch() {
   searchMovies(q);
 }
 
+btnTop10.addEventListener("click",  loadTopScifi);
+btnLatest.addEventListener("click", loadLatestScifi);
 btnSearch.addEventListener("click", doSearch);
 searchInput.addEventListener("keydown", e => { if (e.key === "Enter") doSearch(); });
 closeBtn.addEventListener("click", hideDetails);
-
-// Load on page load
-loadTopScifi();
-loadLatestScifi();

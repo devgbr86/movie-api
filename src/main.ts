@@ -32,17 +32,35 @@ const movieDetailsEl = document.getElementById("movie-details")   as HTMLDivElem
 const closeBtn       = document.getElementById("close-details")   as HTMLButtonElement
 const resultCountEl  = document.getElementById("result-count")    as HTMLSpanElement
 const statusEl       = document.getElementById("status-msg")      as HTMLDivElement
+const btnTop10       = document.getElementById("btn-top10")       as HTMLButtonElement
+const btnLatest      = document.getElementById("btn-latest")      as HTMLButtonElement
+const top10Col       = document.getElementById("top10-col")       as HTMLDivElement
+const latestCol      = document.getElementById("latest-col")      as HTMLDivElement
 
 const API_KEY = "trilogy"
 const BASE    = "https://www.omdbapi.com/"
 
 let currentSelectedLi: HTMLLIElement | null = null
+let top10Loaded  = false
+let latestLoaded = false
 
-// ── TOP 10 ON LOAD ─────────────────────────────────────────────────────────
+// ── HELPERS ────────────────────────────────────────────────────────────────
+
+function showOnlyRank(which: "top10" | "latest" | "search" | "none"): void {
+  top10Col.style.display  = which === "top10" || which === "search" ? "" : "none"
+  latestCol.style.display = which === "latest" ? "" : "none"
+  btnTop10.classList.toggle("active",  which === "top10")
+  btnLatest.classList.toggle("active", which === "latest")
+}
+
+// ── TOP 10 ─────────────────────────────────────────────────────────────────
 
 const SEED_TERMS = ["space", "alien", "robot", "future", "star", "mars", "cyber", "time machine"]
 
 async function loadTopScifi(): Promise<void> {
+  if (top10Loaded) { showOnlyRank("top10"); return }
+
+  showOnlyRank("top10")
   setStatus("Carregando top filmes Sci-Fi...", false)
   resultsEl.innerHTML = ""
   resultCountEl.textContent = ""
@@ -60,10 +78,7 @@ async function loadTopScifi(): Promise<void> {
     for (const data of searchResults) {
       if (data.Search) {
         for (const m of data.Search) {
-          if (!seenIds.has(m.imdbID)) {
-            seenIds.add(m.imdbID)
-            allMovies.push(m)
-          }
+          if (!seenIds.has(m.imdbID)) { seenIds.add(m.imdbID); allMovies.push(m) }
         }
       }
     }
@@ -84,36 +99,39 @@ async function loadTopScifi(): Promise<void> {
       .sort((a, b) => parseFloat(b.imdbRating) - parseFloat(a.imdbRating))
       .slice(0, 10)
 
+    setStatus("", false)
+
     if (top10.length === 0) {
-      setStatus("", false)
-      resultsEl.innerHTML = `<li class="empty-state">Digite um termo e pressione Pesquisar.</li>`
+      resultsEl.innerHTML = `<li class="empty-state">Nenhum resultado encontrado.</li>`
       return
     }
 
-    setStatus("", false)
-    resultCountEl.textContent = `Top ${top10.length} · melhor avaliados`
+    resultCountEl.textContent = `Top ${top10.length} · melhores avaliados`
     renderResults(top10)
+    top10Loaded = true
 
   } catch (err) {
     console.error(err)
-    setStatus("", false)
-    resultsEl.innerHTML = `<li class="empty-state">Digite um termo e pressione Pesquisar.</li>`
+    setStatus("Erro de conexão.", true)
   }
 }
 
-// ── LATEST 10 SCI-FI ───────────────────────────────────────────────────────
+// ── LATEST 10 ──────────────────────────────────────────────────────────────
 
 const LATEST_SEED_TERMS = ["sci-fi", "space", "alien", "robot", "future"]
 const CURRENT_YEAR = new Date().getFullYear()
 const RECENT_YEARS = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2]
 
 async function loadLatestScifi(): Promise<void> {
-  const latestListEl  = document.getElementById("latest-results") as HTMLUListElement | null
-  const latestCountEl = document.getElementById("latest-count")   as HTMLSpanElement  | null
-  if (!latestListEl || !latestCountEl) return
+  const latestListEl  = document.getElementById("latest-results") as HTMLUListElement
+  const latestCountEl = document.getElementById("latest-count")   as HTMLSpanElement
 
+  if (latestLoaded) { showOnlyRank("latest"); return }
+
+  showOnlyRank("latest")
   latestListEl.innerHTML = `<li class="empty-state">Carregando lançamentos...</li>`
   latestCountEl.textContent = ""
+  setStatus("Carregando lançamentos recentes...", false)
 
   try {
     const queries: Promise<OMDbSearchResponse>[] = []
@@ -133,10 +151,7 @@ async function loadLatestScifi(): Promise<void> {
     for (const data of searchResults) {
       if (data.Search) {
         for (const m of data.Search) {
-          if (!seenIds.has(m.imdbID)) {
-            seenIds.add(m.imdbID)
-            allMovies.push(m)
-          }
+          if (!seenIds.has(m.imdbID)) { seenIds.add(m.imdbID); allMovies.push(m) }
         }
       }
     }
@@ -157,11 +172,11 @@ async function loadLatestScifi(): Promise<void> {
       .sort((a, b) => {
         const yearDiff = parseInt(b.Year) - parseInt(a.Year)
         if (yearDiff !== 0) return yearDiff
-        const rA = parseFloat(a.imdbRating) || 0
-        const rB = parseFloat(b.imdbRating) || 0
-        return rB - rA
+        return (parseFloat(b.imdbRating) || 0) - (parseFloat(a.imdbRating) || 0)
       })
       .slice(0, 10)
+
+    setStatus("", false)
 
     if (latest10.length === 0) {
       latestListEl.innerHTML = `<li class="empty-state">Nenhum lançamento recente encontrado.</li>`
@@ -170,21 +185,20 @@ async function loadLatestScifi(): Promise<void> {
 
     latestCountEl.textContent = `Últimos ${latest10.length} · mais recentes`
     renderLatestResults(latest10)
+    latestLoaded = true
 
   } catch (err) {
     console.error(err)
-    latestListEl.innerHTML = `<li class="empty-state">Erro ao carregar lançamentos.</li>`
+    setStatus("Erro de conexão.", true)
   }
 }
 
 function renderLatestResults(movies: OMDbDetail[]): void {
-  const latestListEl = document.getElementById("latest-results") as HTMLUListElement | null
-  if (!latestListEl) return
+  const latestListEl = document.getElementById("latest-results") as HTMLUListElement
   latestListEl.innerHTML = ""
   movies.forEach(movie => {
     const li = document.createElement("li")
-    const rating = movie.imdbRating && movie.imdbRating !== "N/A"
-      ? ` · ★ ${movie.imdbRating}` : ""
+    const rating = movie.imdbRating && movie.imdbRating !== "N/A" ? ` · ★ ${movie.imdbRating}` : ""
     li.innerHTML = `
       <div class="movie-title">${movie.Title}</div>
       <div class="movie-meta">${movie.Year} · ${movie.Runtime}${rating}</div>
@@ -206,10 +220,7 @@ async function searchMovies(query: string): Promise<void> {
   resultsEl.innerHTML = ""
   resultCountEl.textContent = ""
   hideDetails()
-
-  // Hide latest rank during search
-  const latestCol = document.querySelector(".latest-col") as HTMLElement | null
-  if (latestCol) latestCol.style.display = "none"
+  showOnlyRank("search")
 
   try {
     const res1 = await fetch(`${BASE}?s=${encodeURIComponent(query)}&type=movie&apikey=${API_KEY}&page=1`)
@@ -255,6 +266,7 @@ async function searchMovies(query: string): Promise<void> {
     setStatus("", false)
     resultCountEl.textContent = `${scifi.length} filme${scifi.length !== 1 ? "s" : ""}`
     renderResults(scifi)
+    top10Loaded = false
 
   } catch (err) {
     console.error(err)
@@ -268,8 +280,7 @@ function renderResults(movies: OMDbDetail[]): void {
   resultsEl.innerHTML = ""
   movies.forEach(movie => {
     const li = document.createElement("li")
-    const rating = movie.imdbRating && movie.imdbRating !== "N/A"
-      ? ` · ★ ${movie.imdbRating}` : ""
+    const rating = movie.imdbRating && movie.imdbRating !== "N/A" ? ` · ★ ${movie.imdbRating}` : ""
     li.innerHTML = `
       <div class="movie-title">${movie.Title}</div>
       <div class="movie-meta">${movie.Year} · ${movie.Runtime}${rating}</div>
@@ -338,10 +349,8 @@ function doSearch(): void {
   searchMovies(q)
 }
 
+btnTop10.addEventListener("click",  loadTopScifi)
+btnLatest.addEventListener("click", loadLatestScifi)
 btnSearch.addEventListener("click", doSearch)
 searchInput.addEventListener("keydown", e => { if (e.key === "Enter") doSearch() })
 closeBtn.addEventListener("click", hideDetails)
-
-// Load on page load
-loadTopScifi()
-loadLatestScifi()

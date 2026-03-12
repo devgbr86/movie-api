@@ -27,30 +27,30 @@
                <button class="btn-search" id="btn-search">Pesquisar</button>
           </div>
           <div id="status-msg"></div>
+          <div class="rank-btns">
+               <button class="btn-rank" id="btn-top10">★ Top 10 Best of All Time</button>
+               <button class="btn-rank" id="btn-latest">🕐 Latest Movies</button>
+          </div>
      </div>
 
      <div class="content">
 
           <div class="ranks-col">
 
-               <div class="results-col">
+               <div class="results-col" id="top10-col" style="display:none;">
                     <div class="results-header">
                          <h3></h3>
                          <span id="result-count"></span>
                     </div>
-                    <ul id="results">
-                         <li class="empty-state">Carregando...</li>
-                    </ul>
+                    <ul id="results"></ul>
                </div>
 
-               <div class="results-col latest-col">
+               <div class="results-col" id="latest-col" style="display:none;">
                     <div class="results-header">
                          <h3></h3>
                          <span id="latest-count"></span>
                     </div>
-                    <ul id="latest-results">
-                         <li class="empty-state">Carregando lançamentos...</li>
-                    </ul>
+                    <ul id="latest-results"></ul>
                </div>
 
           </div>

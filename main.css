@@ -95,6 +95,35 @@ header {
      background: #e8e9ea;
 }
 
+/* ── RANK BUTTONS ── */
+.rank-btns {
+     display: flex;
+     gap: 0.5rem;
+     margin-top: 0.75rem;
+}
+
+.btn-rank {
+     padding: 0.35rem 0.85rem;
+     background: #f8f9fa;
+     border: 1px solid #a2a9b1;
+     color: #3366cc;
+     font-family: inherit;
+     font-size: 0.82rem;
+     cursor: pointer;
+     transition: background 0.15s;
+}
+
+.btn-rank:hover {
+     background: #e8e9ea;
+     text-decoration: underline;
+}
+
+.btn-rank.active {
+     background: #eaf0fb;
+     border-color: #3366cc;
+     font-weight: bold;
+}
+
 /* ── STATUS ── */
 #status-msg {
      font-size: 0.85rem;
