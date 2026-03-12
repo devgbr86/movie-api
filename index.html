@@ -31,14 +31,28 @@
 
      <div class="content">
 
-          <div class="results-col">
-               <div class="results-header">
-                    <h3>Resultados</h3>
-                    <span id="result-count"></span>
+          <div class="ranks-col">
+
+               <div class="results-col">
+                    <div class="results-header">
+                         <h3></h3>
+                         <span id="result-count"></span>
+                    </div>
+                    <ul id="results">
+                         <li class="empty-state">Carregando...</li>
+                    </ul>
                </div>
-               <ul id="results">
-                    <li class="empty-state">Digite um termo e pressione Pesquisar.</li>
-               </ul>
+
+               <div class="results-col latest-col">
+                    <div class="results-header">
+                         <h3></h3>
+                         <span id="latest-count"></span>
+                    </div>
+                    <ul id="latest-results">
+                         <li class="empty-state">Carregando lançamentos...</li>
+                    </ul>
+               </div>
+
           </div>
 
           <div id="details-section" class="details-panel hidden">

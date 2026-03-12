@@ -124,6 +124,13 @@ header {
      }
 }
 
+/* ── RANKS COLUMN ── */
+.ranks-col {
+     display: flex;
+     flex-direction: column;
+     gap: 2.5rem;
+}
+
 /* ── RESULTS ── */
 .results-header {
      display: flex;
@@ -140,27 +147,32 @@ header {
      font-weight: normal;
 }
 
-#result-count {
+#result-count,
+#latest-count {
      font-size: 0.8rem;
      color: #54595d;
 }
 
-#results {
+#results,
+#latest-results {
      list-style: none;
 }
 
-#results li {
+#results li,
+#latest-results li {
      padding: 0.6rem 0;
      border-bottom: 1px solid #eaecf0;
      cursor: pointer;
 }
 
-#results li:hover .movie-title {
+#results li:hover .movie-title,
+#latest-results li:hover .movie-title {
      color: #3366cc;
      text-decoration: underline;
 }
 
-#results li.active .movie-title {
+#results li.active .movie-title,
+#latest-results li.active .movie-title {
      color: #3366cc;
      font-weight: bold;
 }

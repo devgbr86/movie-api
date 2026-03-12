@@ -101,6 +101,104 @@ async function loadTopScifi(): Promise<void> {
   }
 }
 
+// ── LATEST 10 SCI-FI ───────────────────────────────────────────────────────
+
+const LATEST_SEED_TERMS = ["sci-fi", "space", "alien", "robot", "future"]
+const CURRENT_YEAR = new Date().getFullYear()
+const RECENT_YEARS = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2]
+
+async function loadLatestScifi(): Promise<void> {
+  const latestListEl  = document.getElementById("latest-results") as HTMLUListElement | null
+  const latestCountEl = document.getElementById("latest-count")   as HTMLSpanElement  | null
+  if (!latestListEl || !latestCountEl) return
+
+  latestListEl.innerHTML = `<li class="empty-state">Carregando lançamentos...</li>`
+  latestCountEl.textContent = ""
+
+  try {
+    const queries: Promise<OMDbSearchResponse>[] = []
+    for (const year of RECENT_YEARS) {
+      for (const term of LATEST_SEED_TERMS) {
+        queries.push(
+          fetch(`${BASE}?s=${encodeURIComponent(term)}&type=movie&y=${year}&apikey=${API_KEY}&page=1`)
+            .then(r => r.json() as Promise<OMDbSearchResponse>)
+        )
+      }
+    }
+
+    const searchResults = await Promise.all(queries)
+
+    const seenIds = new Set<string>()
+    const allMovies: OMDbMovie[] = []
+    for (const data of searchResults) {
+      if (data.Search) {
+        for (const m of data.Search) {
+          if (!seenIds.has(m.imdbID)) {
+            seenIds.add(m.imdbID)
+            allMovies.push(m)
+          }
+        }
+      }
+    }
+
+    const details = await Promise.all(
+      allMovies.map(m =>
+        fetch(`${BASE}?i=${m.imdbID}&apikey=${API_KEY}&plot=full`).then(r => r.json() as Promise<OMDbDetail>)
+      )
+    )
+
+    const scifi = details.filter(d =>
+      d.Response === "True" &&
+      d.Genre?.toLowerCase().includes("sci-fi") &&
+      d.Year && parseInt(d.Year) >= CURRENT_YEAR - 2 && parseInt(d.Year) <= CURRENT_YEAR
+    )
+
+    const latest10 = scifi
+      .sort((a, b) => {
+        const yearDiff = parseInt(b.Year) - parseInt(a.Year)
+        if (yearDiff !== 0) return yearDiff
+        const rA = parseFloat(a.imdbRating) || 0
+        const rB = parseFloat(b.imdbRating) || 0
+        return rB - rA
+      })
+      .slice(0, 10)
+
+    if (latest10.length === 0) {
+      latestListEl.innerHTML = `<li class="empty-state">Nenhum lançamento recente encontrado.</li>`
+      return
+    }
+
+    latestCountEl.textContent = `Últimos ${latest10.length} · mais recentes`
+    renderLatestResults(latest10)
+
+  } catch (err) {
+    console.error(err)
+    latestListEl.innerHTML = `<li class="empty-state">Erro ao carregar lançamentos.</li>`
+  }
+}
+
+function renderLatestResults(movies: OMDbDetail[]): void {
+  const latestListEl = document.getElementById("latest-results") as HTMLUListElement | null
+  if (!latestListEl) return
+  latestListEl.innerHTML = ""
+  movies.forEach(movie => {
+    const li = document.createElement("li")
+    const rating = movie.imdbRating && movie.imdbRating !== "N/A"
+      ? ` · ★ ${movie.imdbRating}` : ""
+    li.innerHTML = `
+      <div class="movie-title">${movie.Title}</div>
+      <div class="movie-meta">${movie.Year} · ${movie.Runtime}${rating}</div>
+    `
+    li.addEventListener("click", () => {
+      if (currentSelectedLi) currentSelectedLi.classList.remove("active")
+      li.classList.add("active")
+      currentSelectedLi = li
+      displayDetails(movie)
+    })
+    latestListEl.appendChild(li)
+  })
+}
+
 // ── SEARCH ─────────────────────────────────────────────────────────────────
 
 async function searchMovies(query: string): Promise<void> {
@@ -108,6 +206,10 @@ async function searchMovies(query: string): Promise<void> {
   resultsEl.innerHTML = ""
   resultCountEl.textContent = ""
   hideDetails()
+
+  // Hide latest rank during search
+  const latestCol = document.querySelector(".latest-col") as HTMLElement | null
+  if (latestCol) latestCol.style.display = "none"
 
   try {
     const res1 = await fetch(`${BASE}?s=${encodeURIComponent(query)}&type=movie&apikey=${API_KEY}&page=1`)
@@ -240,5 +342,6 @@ btnSearch.addEventListener("click", doSearch)
 searchInput.addEventListener("keydown", e => { if (e.key === "Enter") doSearch() })
 closeBtn.addEventListener("click", hideDetails)
 
-// Load top Sci-Fi on page load
+// Load on page load
 loadTopScifi()
+loadLatestScifi()
